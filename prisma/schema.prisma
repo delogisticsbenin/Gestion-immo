@@ -1,0 +1,3 @@
+DATABASE_URL="postgresql://neondb_owner:npg_cSGkhtFOT7L4@ep-falling-frog-aqlz36bm.c-postgresql://neondb_owner:npg_cSGkhtFOT7L4@ep-falling-frog-aqlz36bm.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require8.us-east-1.aws.neon.tech/neondb?sslmode=require"
+NEXTAUTH_SECRET="une_phrase_secrete_aleatoire_ici"
+NEXTAUTH_URL="http://localhost:3000

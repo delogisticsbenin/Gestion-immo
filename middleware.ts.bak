@@ -1,0 +1,21 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export function middleware(req: NextRequest) {
+  // Vérifier si l'utilisateur est connecté via un cookie
+  const session = req.cookies.get('sb-clyhhghnivxgecnfcjvl-auth-token');
+
+  // Pages protégées
+  const protectedPaths = ['/dashboard', '/immobilisations', '/reaffectations', '/parametres'];
+  
+  // Si pas de session et qu'on essaie d'accéder à une page protégée
+  if (!session && protectedPaths.some(path => req.nextUrl.pathname.startsWith(path))) {
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/immobilisations/:path*', '/reaffectations/:path*', '/parametres/:path*'],
+};
