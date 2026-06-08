@@ -1,272 +1,324 @@
 "use client";
+
 import { useState, useEffect } from "react";
-import { QRCodeSVG } from "qrcode.react";
-import {
-  addImmobilisation,
-  getDevise,
-  genererCodeImmo,
-  getServices,
-  getPersonnel,
-  initEntreprise,
-} from "@/app/lib/store";
+import { useRouter } from "next/navigation";
+import { addImmobilisation, getServices, getPersonnels } from "@/app/lib/store";
+import QRCode from "qrcode";
 
-type Service = { id: string; nom: string };
-type Personnel = { id: string; nom: string; poste: string; service_id: string };
-
-export default function AjouterImmobilisation() {
+export default function AjouterImmobilisationPage() {
+  const router = useRouter();
+  const [chargement, setChargement] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
+  const [personnels, setPersonnels] = useState<any[]>([]);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [codeInterne, setCodeInterne] = useState("");
+  
   const [formData, setFormData] = useState({
     categorie: "",
     nom: "",
     modele: "",
     numeroSerie: "",
-    etat: "",
+    etat: "Neuf",
     montant: "",
-    anneeAmortissement: "",
-    dateAcquisition: new Date().toISOString().split("T")[0],
+    dateAcquisition: "",
     serviceId: "",
     personnelId: "",
+    anneeAmortissement: "",
+    localisation: "",
+    description: ""
   });
 
-  const [immobilisationCreee, setImmobilisationCreee] = useState<any>(null);
-  const [devise, setDevise] = useState(getDevise());
-  const [services, setServices] = useState<Service[]>([]);
-  const [personnel, setPersonnel] = useState<Personnel[]>([]);
-  const [codeApercu, setCodeApercu] = useState("");
-  const [chargement, setChargement] = useState(true);
-
-  const categories = ["Informatique", "Mobilier de bureau", "Véhicule", "Outillage", "Électronique"];
-  const etats = ["Neuf", "Bon état", "Usagé", "En panne", "Réformé"];
-
-  const chargerDonnees = async () => {
-    setChargement(true);
-    await initEntreprise();
-    setDevise(getDevise());
-
-    const servicesData = await getServices();
-    setServices(servicesData);
-
-    const personnelData = await getPersonnel();
-    setPersonnel(personnelData);
-    setChargement(false);
-  };
-
   useEffect(() => {
+    const chargerDonnees = async () => {
+      const servicesData = await getServices();
+      const personnelsData = await getPersonnels();
+      setServices(servicesData);
+      setPersonnels(personnelsData);
+    };
     chargerDonnees();
   }, []);
 
-  useEffect(() => {
-    if (formData.serviceId) {
-      const service = services.find((s) => s.id === formData.serviceId);
-      if (service) {
-        genererCodeImmo(service.nom).then(setCodeApercu);
+  const genererCodeInterne = async (serviceNom: string) => {
+    const annee = new Date().getFullYear().toString().slice(-2);
+    const prefixe = serviceNom ? serviceNom.substring(0, 3).toUpperCase() : "GEN";
+    const timestamp = Date.now().toString().slice(-4);
+    return `DELO-${annee}-${prefixe}-${timestamp}`;
+  };
+
+  const genererQRCode = async (codeInterne: string) => {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const equipementUrl = `${siteUrl}/equipement/${codeInterne}`;
+    
+    const qrCode = await QRCode.toDataURL(equipementUrl, {
+      width: 256,
+      margin: 2,
+      color: {
+        dark: "#000000",
+        light: "#ffffff"
       }
-    } else {
-      setCodeApercu("");
-    }
-  }, [formData.serviceId, services]);
-
-  const personnelsFiltres = formData.serviceId
-    ? personnel.filter((p) => p.service_id === formData.serviceId)
-    : [];
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-      ...(name === "serviceId" ? { personnelId: "" } : {}),
-    }));
+    });
+    
+    return qrCode;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const service = services.find((s) => s.id === formData.serviceId);
-    if (!service) {
-      alert("Veuillez sélectionner un service");
-      return;
-    }
-
-    const codeInterne = await genererCodeImmo(service.nom);
-    const urlQR = `${window.location.origin}/scan/${codeInterne}`;
-
-    const personnelSelectionne = personnelsFiltres.find((p) => p.id === formData.personnelId);
+    setChargement(true);
 
     try {
-      const nouvelleImmo = await addImmobilisation({
-        code_interne: codeInterne,
+      const code = await genererCodeInterne(formData.serviceId);
+      setCodeInterne(code);
+      
+      const nouvelleImmobilisation = await addImmobilisation({
+        code_interne: code,
         categorie: formData.categorie,
         nom: formData.nom,
         modele: formData.modele,
         numero_serie: formData.numeroSerie,
         etat: formData.etat,
-        montant: Number(formData.montant),
-        annee_amortissement: Number(formData.anneeAmortissement),
+        montant: parseFloat(formData.montant),
         date_acquisition: formData.dateAcquisition,
         service_id: formData.serviceId,
-        personnel_id: formData.personnelId || undefined,  // ✅ CORRIGÉ ICI
+        personnel_id: formData.personnelId,
+        annee_amortissement: parseInt(formData.anneeAmortissement),
+        localisation: formData.localisation,
+        description: formData.description
       });
 
-      setImmobilisationCreee({
-        ...nouvelleImmo,
-        urlQR,
-        service_nom: service.nom,
-        personnel_nom: personnelSelectionne?.nom || "",
-      });
+      const qrCode = await genererQRCode(code);
+      setQrCodeUrl(qrCode);
+
+      alert("Équipement ajouté avec succès ! QR Code généré.");
+      
+      setTimeout(() => {
+        router.push("/immobilisations");
+      }, 2000);
     } catch (error) {
-      alert("Erreur lors de l'ajout : " + (error as Error).message);
+      console.error("Erreur ajout immobilisation:", error);
+      alert("Erreur lors de l'ajout de l'équipement");
+    } finally {
+      setChargement(false);
     }
   };
 
-  const handlePrint = () => window.print();
-
-  const handleNouveau = () => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({
-      categorie: "",
-      nom: "",
-      modele: "",
-      // Version 1.1 - Fix Vercel deployment
-      numeroSerie: "",
-      etat: "",
-      montant: "",
-      anneeAmortissement: "",
-      dateAcquisition: new Date().toISOString().split("T")[0],
-      serviceId: "",
-      personnelId: "",
+      ...formData,
+      [e.target.name]: e.target.value
     });
-    setImmobilisationCreee(null);
-    setCodeApercu("");
   };
 
-  if (chargement) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-gray-600">Chargement...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">➕ Nouvelle Immobilisation</h1>
-          <p className="text-gray-600 mt-2">Remplissez les informations de l'équipement pour générer son QR Code</p>
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">➕ Ajouter un équipement</h1>
+        <p className="text-gray-600">Enregistrez un nouvel équipement et générez son QR Code</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Catégorie *</label>
+            <select
+              name="categorie"
+              value={formData.categorie}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Sélectionner</option>
+              <option value="Informatique">Informatique</option>
+              <option value="Mobilier">Mobilier</option>
+              <option value="Véhicule">Véhicule</option>
+              <option value="Électronique">Électronique</option>
+              <option value="Outillage">Outillage</option>
+              <option value="Autre">Autre</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nom de l'équipement *</label>
+            <input
+              type="text"
+              name="nom"
+              value={formData.nom}
+              onChange={handleChange}
+              placeholder="Ex: Ordinateur Portable Dell"
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Modèle</label>
+            <input
+              type="text"
+              name="modele"
+              value={formData.modele}
+              onChange={handleChange}
+              placeholder="Ex: Inspiron 15 3000"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Numéro de série</label>
+            <input
+              type="text"
+              name="numeroSerie"
+              value={formData.numeroSerie}
+              onChange={handleChange}
+              placeholder="Ex: SN123456789"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">État *</label>
+            <select
+              name="etat"
+              value={formData.etat}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="Neuf">Neuf</option>
+              <option value="Bon état">Bon état</option>
+              <option value="Usagé">Usagé</option>
+              <option value="En panne">En panne</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Montant (FCFA) *</label>
+            <input
+              type="number"
+              name="montant"
+              value={formData.montant}
+              onChange={handleChange}
+              placeholder="Ex: 350000"
+              required
+              min="0"
+              step="0.01"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Date d'acquisition *</label>
+            <input
+              type="date"
+              name="dateAcquisition"
+              value={formData.dateAcquisition}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Service affecté *</label>
+            <select
+              name="serviceId"
+              value={formData.serviceId}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Sélectionner un service</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Personnel responsable</label>
+            <select
+              name="personnelId"
+              value={formData.personnelId}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Sélectionner</option>
+              {personnels.map((personnel) => (
+                <option key={personnel.id} value={personnel.id}>
+                  {personnel.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Années d'amortissement</label>
+            <input
+              type="number"
+              name="anneeAmortissement"
+              value={formData.anneeAmortissement}
+              onChange={handleChange}
+              placeholder="Ex: 5"
+              min="0"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Localisation</label>
+            <input
+              type="text"
+              name="localisation"
+              value={formData.localisation}
+              onChange={handleChange}
+              placeholder="Ex: Bureau 205, 2ème étage"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              rows={3}
+              placeholder="Description détaillée de l'équipement..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
         </div>
 
-        {!immobilisationCreee && (
-          <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md space-y-6">
-            {codeApercu && (
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                <p className="text-sm text-blue-700 font-medium mb-1">Code qui sera généré :</p>
-                <p className="text-2xl font-mono font-bold text-blue-900">{codeApercu}</p>
-              </div>
-            )}
+        <div className="flex gap-4">
+          <button
+            type="submit"
+            disabled={chargement}
+            className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400"
+          >
+            {chargement ? "Enregistrement..." : "💾 Enregistrer et générer QR Code"}
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => router.push("/immobilisations")}
+            className="px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition"
+          >
+            Annuler
+          </button>
+        </div>
+      </form>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie *</label>
-                <select name="categorie" value={formData.categorie} onChange={handleChange} required className="w-full border border-gray-300 p-2 rounded-lg">
-                  <option value="">-- Choisir une catégorie --</option>
-                  {categories.map((cat) => (<option key={cat} value={cat}>{cat}</option>))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">État *</label>
-                <select name="etat" value={formData.etat} onChange={handleChange} required className="w-full border border-gray-300 p-2 rounded-lg">
-                  <option value="">-- Choisir un état --</option>
-                  {etats.map((etat) => (<option key={etat} value={etat}>{etat}</option>))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nom de l'équipement *</label>
-                <input type="text" name="nom" value={formData.nom} onChange={handleChange} placeholder="Ex: Ordinateur portable Dell" required className="w-full border border-gray-300 p-2 rounded-lg" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Modèle</label>
-                <input type="text" name="modele" value={formData.modele} onChange={handleChange} placeholder="Ex: Latitude 5420" className="w-full border border-gray-300 p-2 rounded-lg" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Numéro de série</label>
-              <input type="text" name="numeroSerie" value={formData.numeroSerie} onChange={handleChange} placeholder="Ex: SN123456789" className="w-full border border-gray-300 p-2 rounded-lg" />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Montant ({devise.symbole}) *</label>
-                <input type="number" name="montant" value={formData.montant} onChange={handleChange} placeholder="Ex: 1200" required min="0" step="0.01" className="w-full border border-gray-300 p-2 rounded-lg" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Année d'amortissement *</label>
-                <input type="number" name="anneeAmortissement" value={formData.anneeAmortissement} onChange={handleChange} placeholder="Ex: 5" required min="1" max="30" className="w-full border border-gray-300 p-2 rounded-lg" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date d'acquisition *</label>
-                <input type="date" name="dateAcquisition" value={formData.dateAcquisition} onChange={handleChange} required className="w-full border border-gray-300 p-2 rounded-lg" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Service *</label>
-                <select name="serviceId" value={formData.serviceId} onChange={handleChange} required className="w-full border border-gray-300 p-2 rounded-lg">
-                  <option value="">-- Choisir un service --</option>
-                  {services.map((service) => (
-                    <option key={service.id} value={service.id}>{service.nom}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Personnel affecté *</label>
-                <select name="personnelId" value={formData.personnelId} onChange={handleChange} required disabled={!formData.serviceId} className="w-full border border-gray-300 p-2 rounded-lg disabled:bg-gray-100">
-                  <option value="">{formData.serviceId ? "-- Choisir une personne --" : "-- Sélectionnez d'abord un service --"}</option>
-                  {personnelsFiltres.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nom}{p.poste ? ` - ${p.poste}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <button type="submit" className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition">
-              ✅ Valider et Générer le QR Code
-            </button>
-          </form>
-        )}
-
-        {immobilisationCreee && (
-          <div className="bg-white p-8 rounded-lg shadow-md">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">Immobilisation enregistrée !</h2>
-              <p className="text-gray-600 mt-2">Code attribué : <span className="font-mono font-bold text-blue-600 text-lg">{immobilisationCreee.code_interne}</span></p>
-            </div>
-
-            <div className="flex justify-center mb-6">
-              <QRCodeSVG value={immobilisationCreee.urlQR} size={256} level="H" includeMargin={true} />
-            </div>
-
-            <div className="flex gap-4 no-print">
-              <button onClick={handlePrint} className="flex-1 bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition">
-                🖨️ Imprimer le QR Code
-              </button>
-              <button onClick={handleNouveau} className="flex-1 bg-gray-600 text-white p-3 rounded-lg hover:bg-gray-700 transition">
-                ➕ Nouvel équipement
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Affichage du QR Code généré */}
+      {qrCodeUrl && (
+        <div className="max-w-md mx-auto mt-8 bg-white rounded-xl shadow-lg p-8 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">QR Code généré !</h2>
+          <p className="text-gray-600 mb-4">Code interne : <span className="font-mono font-bold">{codeInterne}</span></p>
+          <img src={qrCodeUrl} alt="QR Code" className="mx-auto mb-4" />
+          <p className="text-sm text-gray-500">
+            Scannez ce QR code pour voir les informations de l'équipement
+          </p>
+        </div>
+      )}
     </div>
   );
 }

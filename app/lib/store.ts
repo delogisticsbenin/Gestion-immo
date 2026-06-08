@@ -1,142 +1,102 @@
-import { supabase } from './supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 
-// === TYPES ===
-export type Immobilisation = {
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
+
+export interface Immobilisation {
   id: string;
   code_interne: string;
-  entreprise_id: string;
   categorie: string;
   nom: string;
-  modele: string;
-  numero_serie: string;
+  modele?: string;
+  numero_serie?: string;
   etat: string;
   montant: number;
-  annee_amortissement: number;
   date_acquisition: string;
-  service_id: string;
-  personnel_id:  string | null; 
-  service_nom?: string;
-  personnel_nom?: string;
-  poste?: string;
-};
+  service_id?: string;
+  personnel_id?: string;
+  annee_amortissement?: number;
+  localisation?: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
-export type Devise = {
-  code: string;
+export interface Service {
+  id: string;
   nom: string;
-  symbole: string;
-};
+  description?: string;
+  created_at?: string;
+}
 
-export const DEVISES: Devise[] = [
-  { code: "XOF", nom: "Franc CFA (UEMOA)", symbole: "FCFA" },
-  { code: "XAF", nom: "Franc CFA (CEMAC)", symbole: "FCFA" },
-  { code: "EUR", nom: "Euro", symbole: "€" },
-  { code: "USD", nom: "Dollar américain", symbole: "$" },
-  { code: "GBP", nom: "Livre sterling", symbole: "£" },
-  { code: "MAD", nom: "Dirham marocain", symbole: "MAD" },
-  { code: "DZD", nom: "Dinar algérien", symbole: "DA" },
-  { code: "TND", nom: "Dinar tunisien", symbole: "DT" },
-  { code: "CAD", nom: "Dollar canadien", symbole: "CA$" },
-  { code: "CHF", nom: "Franc suisse", symbole: "CHF" },
-];
+export interface Personnel {
+  id: string;
+  nom: string;
+  email?: string;
+  service_id?: string;
+  created_at?: string;
+}
 
-// === ENTREPRISE PAR DÉFAUT ===
-const ENTREPRISE_DEMO_ID = "00000000-0000-0000-0000-000000000001";
-
-export const initEntreprise = async () => {
-  const { data } = await supabase
-    .from('entreprises')
-    .select('id')
-    .eq('id', ENTREPRISE_DEMO_ID)
-    .single();
-
-  if (!data) {
-    await supabase
-      .from('entreprises')
-      .insert({
-        id: ENTREPRISE_DEMO_ID,
-        nom: localStorage.getItem('nomEntreprise') || 'Dé Logistics',
-        couleur_principale: localStorage.getItem('couleurPrincipale') || '#28b4fb',
-        devise_code: 'XOF',
-      });
-
-    const servicesParDefaut = [
-      'Direction', 'Ressources Humaines', 'Comptabilité', 
-      'Informatique', 'Commercial', 'HSEQ', 'Exploitation'
-    ];
-
-    for (const nom of servicesParDefaut) {
-      await supabase
-        .from('services')
-        .insert({ entreprise_id: ENTREPRISE_DEMO_ID, nom });
-    }
-  }
-
-  return ENTREPRISE_DEMO_ID;
-};
-
-// === FONCTIONS UTILITAIRES ===
-const nettoyerChaine = (chaine: string): string => {
-  return chaine
-    .replace(/[^a-zA-ZÀ-ÿ\s]/g, '')
-    .replace(/\s+/g, '')
-    .toUpperCase();
-};
-
-export const genererCodeImmo = async (serviceNom: string): Promise<string> => {
-  const nomEntreprise = localStorage.getItem("nomEntreprise") || "ENT";
-  const prefixeEntreprise = nettoyerChaine(nomEntreprise).substring(0, 3).padEnd(3, 'X');
-  const annee = new Date().getFullYear().toString().slice(-2);
-  const sigleService = nettoyerChaine(serviceNom).substring(0, 3).padEnd(3, 'X');
-
-  const { count } = await supabase
-    .from('immobilisations')
-    .select('*', { count: 'exact', head: true });
-
-  const numero = ((count || 0) + 1).toString().padStart(3, '0');
-
-  return `${prefixeEntreprise}-${annee}-${sigleService}-${numero}`;
-};
-
-// === CRUD IMMOBILISATIONS ===
-export const getImmobilisations = async (): Promise<Immobilisation[]> => {
+// Immobilisations
+export const getImmobilisations = async () => {
   const { data, error } = await supabase
     .from('immobilisations')
-    .select(`
-      *,
-      service_nom:services(nom),
-      personnel_nom:personnel(nom, poste)
-    `)
-    .eq('entreprise_id', ENTREPRISE_DEMO_ID)
+    .select('*')
     .order('created_at', { ascending: false });
-
+  
   if (error) {
-    console.error('Erreur:', error);
+    console.error("Erreur récupération immobilisations:", error);
     return [];
   }
-
-  return data.map((item: any) => ({
-    ...item,
-    service_nom: item.service_nom?.nom || '',
-    personnel_nom: item.personnel_nom?.nom || '',
-    poste: item.personnel_nom?.poste || '',
-  }));
+  
+  return data || [];
 };
 
-export const addImmobilisation = async (immo: Partial<Immobilisation>) => {
+export const getImmobilisationById = async (id: string) => {
   const { data, error } = await supabase
     .from('immobilisations')
-    .insert({
-      entreprise_id: ENTREPRISE_DEMO_ID,
-      ...immo,
-    })
+    .select('*')
+    .eq('id', id)
+    .single();
+  
+  if (error) {
+    console.error("Erreur récupération immobilisation:", error);
+    return null;
+  }
+  
+  return data;
+};
+
+export const addImmobilisation = async (immobilisation: Omit<Immobilisation, 'id' | 'created_at' | 'updated_at'>) => {
+  const { data, error } = await supabase
+    .from('immobilisations')
+    .insert([immobilisation])
     .select()
     .single();
-
+  
   if (error) {
-    console.error('Erreur ajout:', error);
+    console.error("Erreur ajout immobilisation:", error);
     throw error;
   }
+  
+  return data;
+};
 
+export const updateImmobilisation = async (id: string, immobilisation: Partial<Immobilisation>) => {
+  const { data, error } = await supabase
+    .from('immobilisations')
+    .update(immobilisation)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Erreur modification immobilisation:", error);
+    throw error;
+  }
+  
   return data;
 };
 
@@ -145,102 +105,174 @@ export const deleteImmobilisation = async (id: string) => {
     .from('immobilisations')
     .delete()
     .eq('id', id);
-
+  
   if (error) {
-    console.error('Erreur suppression:', error);
+    console.error("Erreur suppression immobilisation:", error);
     throw error;
   }
+  
+  return true;
 };
 
-export const updateImmobilisation = async (id: string, updates: Partial<Immobilisation>) => {
-  const { data, error } = await supabase
-    .from('immobilisations')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Erreur mise à jour:', error);
-    throw error;
-  }
-
-  return data;
-};
-
-// === SERVICES ===
+// Services
 export const getServices = async () => {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('services')
     .select('*')
-    .eq('entreprise_id', ENTREPRISE_DEMO_ID)
     .order('nom');
-
+  
+  if (error) {
+    console.error("Erreur récupération services:", error);
+    return [];
+  }
+  
   return data || [];
 };
 
-export const addService = async (nom: string) => {
-  const { data } = await supabase
+export const addService = async (service: Omit<Service, 'id' | 'created_at'>) => {
+  const { data, error } = await supabase
     .from('services')
-    .insert({ entreprise_id: ENTREPRISE_DEMO_ID, nom })
+    .insert([service])
     .select()
     .single();
+  
+  if (error) {
+    console.error("Erreur ajout service:", error);
+    throw error;
+  }
+  
+  return data;
+};
 
+export const updateService = async (id: string, service: Partial<Service>) => {
+  const { data, error } = await supabase
+    .from('services')
+    .update(service)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Erreur modification service:", error);
+    throw error;
+  }
+  
   return data;
 };
 
 export const deleteService = async (id: string) => {
-  await supabase.from('services').delete().eq('id', id);
+  const { error } = await supabase
+    .from('services')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
+    console.error("Erreur suppression service:", error);
+    throw error;
+  }
+  
+  return true;
 };
 
-// === PERSONNEL ===
-export const getPersonnel = async () => {
-  const { data } = await supabase
-    .from('personnel')
-    .select('*, service_nom:services(nom)')
-    .eq('entreprise_id', ENTREPRISE_DEMO_ID)
+// Personnels
+export const getPersonnels = async () => {
+  const { data, error } = await supabase
+    .from('personnels')
+    .select('*')
     .order('nom');
-
+  
+  if (error) {
+    console.error("Erreur récupération personnels:", error);
+    return [];
+  }
+  
   return data || [];
 };
 
-export const addPersonnel = async (nom: string, poste: string, serviceId: string) => {
-  const { data } = await supabase
-    .from('personnel')
-    .insert({
-      entreprise_id: ENTREPRISE_DEMO_ID,
-      nom,
-      poste,
-      service_id: serviceId,
-    })
+export const addPersonnel = async (personnel: Omit<Personnel, 'id' | 'created_at'>) => {
+  const { data, error } = await supabase
+    .from('personnels')
+    .insert([personnel])
     .select()
     .single();
+  
+  if (error) {
+    console.error("Erreur ajout personnel:", error);
+    throw error;
+  }
+  
+  return data;
+};
 
+export const updatePersonnel = async (id: string, personnel: Partial<Personnel>) => {
+  const { data, error } = await supabase
+    .from('personnels')
+    .update(personnel)
+    .eq('id', id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Erreur modification personnel:", error);
+    throw error;
+  }
+  
   return data;
 };
 
 export const deletePersonnel = async (id: string) => {
-  await supabase.from('personnel').delete().eq('id', id);
-};
-
-// === DEVISE ===
-export const getDevise = (): Devise => {
-  if (typeof window === "undefined") return DEVISES[0];
-  const saved = localStorage.getItem("devise");
-  if (saved) {
-    const parsed = JSON.parse(saved);
-    return DEVISES.find((d) => d.code === parsed.code) || DEVISES[0];
+  const { error } = await supabase
+    .from('personnels')
+    .delete()
+    .eq('id', id);
+  
+  if (error) {
+    console.error("Erreur suppression personnel:", error);
+    throw error;
   }
-  return DEVISES[0];
+  
+  return true;
 };
 
-export const saveDevise = (devise: Devise) => {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("devise", JSON.stringify(devise));
+// Utilitaires
+export const formatMontant = (montant: number) => {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'XOF',
+    minimumFractionDigits: 0
+  }).format(montant);
 };
 
-export const formatMontant = (montant: number): string => {
-  const devise = getDevise();
-  const formatted = new Intl.NumberFormat("fr-FR").format(montant);
-  return `${formatted} ${devise.symbole}`;
+// Initialisation entreprise
+export const initEntreprise = () => {
+  if (typeof window === 'undefined') return;
+  
+  // Valeurs par défaut
+  const defaultData = {
+    nom: 'Dé Logistics',
+    logo: '',
+    couleurPrincipale: '#1e3a8a',
+    devise: 'FCFA'
+  };
+
+  // Vérifier si déjà initialisé
+  if (!localStorage.getItem('nomEntreprise')) {
+    localStorage.setItem('nomEntreprise', defaultData.nom);
+  }
+  if (!localStorage.getItem('entrepriseLogo')) {
+    localStorage.setItem('entrepriseLogo', defaultData.logo);
+  }
+  if (!localStorage.getItem('couleurPrincipale')) {
+    localStorage.setItem('couleurPrincipale', defaultData.couleurPrincipale);
+  }
+  if (!localStorage.getItem('devise')) {
+    localStorage.setItem('devise', defaultData.devise);
+  }
+};
+
+export const getDevise = () => {
+  return {
+    code: 'FCFA',
+    symbole: 'FCFA'
+  };
 };
