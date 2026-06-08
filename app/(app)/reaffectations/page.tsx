@@ -117,7 +117,6 @@ export default function ReaffectationsPage() {
         </div>
       </div>
 
-      {/* Modal de réaffectation */}
       {selectedImmo && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full">

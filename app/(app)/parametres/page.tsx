@@ -95,7 +95,6 @@ export default function ParametresPage() {
           </div>
         )}
 
-        {/* Entreprise */}
         <div className="bg-white rounded-xl shadow-sm p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">🏢 Entreprise</h2>
           <div className="space-y-6">
@@ -162,7 +161,6 @@ export default function ParametresPage() {
           </div>
         </div>
 
-        {/* Services */}
         <div className="bg-white rounded-xl shadow-sm p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">🏢 Services</h2>
           <div className="flex gap-2 mb-4">
@@ -195,7 +193,6 @@ export default function ParametresPage() {
           </div>
         </div>
 
-        {/* Personnel */}
         <div className="bg-white rounded-xl shadow-sm p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">👥 Personnel</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
