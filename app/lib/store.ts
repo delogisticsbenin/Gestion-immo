@@ -270,9 +270,62 @@ export const initEntreprise = () => {
   }
 };
 
+// Liste des devises disponibles
+export const DEVISES = [
+  { code: 'FCFA', nom: 'Franc CFA (XOF)', symbole: 'FCFA' },
+  { code: 'EUR', nom: 'Euro', symbole: '€' },
+  { code: 'USD', nom: 'Dollar US', symbole: '$' },
+  { code: 'GBP', nom: 'Livre Sterling', symbole: '£' }
+];
+
+// Sauvegarder la devise
+export const saveDevise = (devise: string) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('devise', devise);
+  window.dispatchEvent(new Event('storage'));
+};
+
+// Alias pour getPersonnel (compatibilité)
+export const getPersonnel = getPersonnels;
+
 export const getDevise = () => {
   return {
     code: 'FCFA',
     symbole: 'FCFA'
   };
+};
+
+// Données entreprise (localStorage)
+export const getEntrepriseData = () => {
+  if (typeof window === 'undefined') {
+    return {
+      nom: 'Dé Logistics',
+      logo: '',
+      couleurPrincipale: '#1e3a8a',
+      devise: 'FCFA'
+    };
+  }
+  
+  return {
+    nom: localStorage.getItem('nomEntreprise') || 'Dé Logistics',
+    logo: localStorage.getItem('entrepriseLogo') || '',
+    couleurPrincipale: localStorage.getItem('couleurPrincipale') || '#1e3a8a',
+    devise: localStorage.getItem('devise') || 'FCFA'
+  };
+};
+
+export const updateEntrepriseData = (data: Partial<{
+  nom: string;
+  logo: string;
+  couleurPrincipale: string;
+  devise: string;
+}>) => {
+  if (typeof window === 'undefined') return;
+  
+  if (data.nom !== undefined) localStorage.setItem('nomEntreprise', data.nom);
+  if (data.logo !== undefined) localStorage.setItem('entrepriseLogo', data.logo);
+  if (data.couleurPrincipale !== undefined) localStorage.setItem('couleurPrincipale', data.couleurPrincipale);
+  if (data.devise !== undefined) localStorage.setItem('devise', data.devise);
+  
+  window.dispatchEvent(new Event('storage'));
 };
