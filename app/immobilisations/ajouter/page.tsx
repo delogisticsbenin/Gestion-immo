@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { addImmobilisation, getServices, getPersonnels } from "@/app/lib/store";
+import { addImmobilisation, getServices, getPersonnels, supabase } from "@/app/lib/store";
 import QRCode from "qrcode";
 
 export default function AjouterImmobilisationPage() {
@@ -36,16 +36,24 @@ export default function AjouterImmobilisationPage() {
     chargerDonnees();
   }, []);
 
-  const genererCodeInterne = async (serviceNom: string) => {
+  const genererCodeInterne = async () => {
     const annee = new Date().getFullYear().toString().slice(-2);
-    const prefixe = serviceNom ? serviceNom.substring(0, 3).toUpperCase() : "GEN";
-    const timestamp = Date.now().toString().slice(-4);
-    return `DELO-${annee}-${prefixe}-${timestamp}`;
+    
+    // Compter TOUS les équipements existants cette année (tous services confondus)
+    const { data: existants } = await supabase
+      .from('immobilisations')
+      .select('code_interne')
+      .like('code_interne', `DELO-${annee}-%`);
+    
+    const numero = (existants?.length || 0) + 1;
+    const numeroFormate = numero.toString().padStart(4, '0');
+    
+    return `DELO-${annee}-${numeroFormate}`;
   };
 
-  const genererQRCode = async (codeInterne: string) => {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-    const equipementUrl = `${siteUrl}/equipement/${codeInterne}`;
+  const genererQRCode = async (code: string) => {
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://gestion-immo-zp3l.vercel.app';
+    const equipementUrl = `${siteUrl}/equipement/${code}`;
     
     const qrCode = await QRCode.toDataURL(equipementUrl, {
       width: 256,
@@ -64,7 +72,21 @@ export default function AjouterImmobilisationPage() {
     setChargement(true);
 
     try {
-      const code = await genererCodeInterne(formData.serviceId);
+      // Générer un code unique
+      let code = await genererCodeInterne();
+      
+      // Vérifier que le code n'existe pas déjà (sécurité supplémentaire)
+      const { data: codeExistant } = await supabase
+        .from('immobilisations')
+        .select('id')
+        .eq('code_interne', code)
+        .single();
+      
+      // Si le code existe, ajouter un suffixe
+      if (codeExistant) {
+        code = `${code}-${Date.now().toString().slice(-2)}`;
+      }
+      
       setCodeInterne(code);
       
       const nouvelleImmobilisation = await addImmobilisation({
@@ -89,9 +111,10 @@ export default function AjouterImmobilisationPage() {
       setTimeout(() => {
         router.push("/immobilisations");
       }, 2000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erreur ajout immobilisation:", error);
-      alert("Erreur lors de l'ajout de l'équipement");
+      const message = error?.message || error?.details || JSON.stringify(error);
+      alert(`Erreur : ${message}`);
     } finally {
       setChargement(false);
     }
@@ -120,7 +143,7 @@ export default function AjouterImmobilisationPage() {
               value={formData.categorie}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Sélectionner</option>
               <option value="Informatique">Informatique</option>
@@ -141,7 +164,7 @@ export default function AjouterImmobilisationPage() {
               onChange={handleChange}
               placeholder="Ex: Ordinateur Portable Dell"
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -153,7 +176,7 @@ export default function AjouterImmobilisationPage() {
               value={formData.modele}
               onChange={handleChange}
               placeholder="Ex: Inspiron 15 3000"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -165,7 +188,7 @@ export default function AjouterImmobilisationPage() {
               value={formData.numeroSerie}
               onChange={handleChange}
               placeholder="Ex: SN123456789"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -176,7 +199,7 @@ export default function AjouterImmobilisationPage() {
               value={formData.etat}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="Neuf">Neuf</option>
               <option value="Bon état">Bon état</option>
@@ -196,7 +219,7 @@ export default function AjouterImmobilisationPage() {
               required
               min="0"
               step="0.01"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -208,7 +231,7 @@ export default function AjouterImmobilisationPage() {
               value={formData.dateAcquisition}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -219,7 +242,7 @@ export default function AjouterImmobilisationPage() {
               value={formData.serviceId}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Sélectionner un service</option>
               {services.map((service) => (
@@ -236,7 +259,7 @@ export default function AjouterImmobilisationPage() {
               name="personnelId"
               value={formData.personnelId}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Sélectionner</option>
               {personnels.map((personnel) => (
@@ -256,7 +279,7 @@ export default function AjouterImmobilisationPage() {
               onChange={handleChange}
               placeholder="Ex: 5"
               min="0"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -280,7 +303,6 @@ export default function AjouterImmobilisationPage() {
         </div>
       </form>
 
-      {/* Affichage du QR Code généré */}
       {qrCodeUrl && (
         <div className="max-w-md mx-auto mt-8 bg-white rounded-xl shadow-lg p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">QR Code généré !</h2>
