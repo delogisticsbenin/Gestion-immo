@@ -14,7 +14,7 @@ export type Immobilisation = {
   annee_amortissement: number;
   date_acquisition: string;
   service_id: string;
-  personnel_id: string;
+  personnel_id:  string | null; 
   service_nom?: string;
   personnel_nom?: string;
   poste?: string;
