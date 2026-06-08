@@ -2,99 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Amélioration du rendu du texte */
 * {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
 
+html,
 body {
-  color: #1f2937; /* gray-800 - texte plus foncé */
-  font-weight: 400;
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background-color: #ffffff !important;
+  color: #111827;
 }
 
-/* Améliorer la lisibilité des titres */
-h1, h2, h3, h4, h5, h6 {
-  color: #111827; /* gray-900 - plus foncé */
-  font-weight: 600;
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-/* Améliorer le contraste des textes gris */
-.text-gray-500 {
-  color: #6b7280 !important; /* Plus foncé */
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-.text-gray-600 {
-  color: #4b5563 !important; /* Plus foncé */
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
 }
 
-/* Supprimer l'opacité faible */
-.opacity-50 {
-  opacity: 0.8 !important;
-}
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-/* Styles pour l'impression des étiquettes */
-@media print {
-  .no-print {
-    display: none !important;
-  }
-  
-  body {
-    background: white !important;
-  }
-  
-  @page {
-    size: auto;
-    margin: 10mm;
-  }
-}
-/* Améliorer le rendu du texte */
-body {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-/* Forcer un meilleur contraste par défaut */
-h1, h2, h3, h4, h5, h6 {
-  color: #111827 !important; /* gray-900 */
-}
-
-p, span, div {
-  color: #374151; /* gray-700 */
-}
-
-/* Améliorer les textes gris trop clairs */
-.text-gray-400 {
-  color: #6b7280 !important; /* gray-500 plus foncé */
-}
-
-.text-gray-500 {
-  color: #4b5563 !important; /* gray-600 plus foncé */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }

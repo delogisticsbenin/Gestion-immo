@@ -4,9 +4,9 @@ import AuthProvider from "@/app/components/AuthProvider";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <div className="flex min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-white">
         <Sidebar />
-        <main className="flex-1 ml-64 min-h-screen bg-gray-100">
+        <main className="ml-64">
           {children}
         </main>
       </div>

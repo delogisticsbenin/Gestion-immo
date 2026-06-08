@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import ThemeProvider from "./components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "Gestion des Immobilisations",
-  description: "Application de gestion des immobilisations",
+  description: "Application de gestion des immobilisations - Dé Logistics",
 };
 
 export default function RootLayout({
@@ -13,11 +12,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" suppressHydrationWarning>
-      <body className="antialiased">
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+    <html lang="fr">
+      <body className="bg-white text-gray-900">
+        {children}
       </body>
     </html>
   );
