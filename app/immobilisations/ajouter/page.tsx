@@ -125,6 +125,7 @@ export default function AjouterImmobilisation() {
       categorie: "",
       nom: "",
       modele: "",
+      // Version 1.1 - Fix Vercel deployment
       numeroSerie: "",
       etat: "",
       montant: "",
