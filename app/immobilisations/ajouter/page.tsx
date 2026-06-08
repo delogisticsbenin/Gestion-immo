@@ -23,9 +23,7 @@ export default function AjouterImmobilisationPage() {
     dateAcquisition: "",
     serviceId: "",
     personnelId: "",
-    anneeAmortissement: "",
-    localisation: "",
-    description: ""
+    anneeAmortissement: ""
   });
 
   useEffect(() => {
@@ -80,9 +78,7 @@ export default function AjouterImmobilisationPage() {
         date_acquisition: formData.dateAcquisition,
         service_id: formData.serviceId,
         personnel_id: formData.personnelId,
-        annee_amortissement: parseInt(formData.anneeAmortissement),
-        localisation: formData.localisation,
-        description: formData.description
+        annee_amortissement: parseInt(formData.anneeAmortissement)
       });
 
       const qrCode = await genererQRCode(code);
@@ -101,7 +97,7 @@ export default function AjouterImmobilisationPage() {
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -260,30 +256,6 @@ export default function AjouterImmobilisationPage() {
               onChange={handleChange}
               placeholder="Ex: 5"
               min="0"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Localisation</label>
-            <input
-              type="text"
-              name="localisation"
-              value={formData.localisation}
-              onChange={handleChange}
-              placeholder="Ex: Bureau 205, 2ème étage"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows={3}
-              placeholder="Description détaillée de l'équipement..."
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
