@@ -104,7 +104,7 @@ export default function AjouterImmobilisation() {
         annee_amortissement: Number(formData.anneeAmortissement),
         date_acquisition: formData.dateAcquisition,
         service_id: formData.serviceId,
-        personnel_id: formData.personnelId || null,
+        personnel_id: formData.personnelId || undefined,  // ✅ CORRIGÉ ICI
       });
 
       setImmobilisationCreee({
