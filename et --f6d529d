@@ -1,0 +1,16 @@
+[33md265da9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mancienne-version[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Changement arrière-plan en blanc
+[33mf6d529d[m Correction affichage service et personnel
+[33mec2c038[m Ajout page publique QR code équipement
+[33m6cd7337[m Correction affichage QR Code
+[33me83da6c[m Numérotation chronologique globale tous services
+[33m9f802f2[m Suppression localisation et description
+[33mc8474f1[m Correction finale des imports
+[33mdb983e7[m Correction complète des erreurs TypeScript
+[33m8dbea73[m Correction page paramètres
+[33md6289db[m Ajout page publique QR code et correction store
+[33me56b397[m Suppression section compte de test
+[33mf9eee55[m Ajout redirection page d'accueil vers login
+[33me692077[m Force redeploy - fix personnel_id
+[33m432acff[m Fix type personnel_id pour Vercel
+[33mc2da18a[m Correction type personnel_id pour Vercel
+[33m384f813[m Version initiale - Gestion Immo
