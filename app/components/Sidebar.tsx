@@ -1,150 +1,128 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Boxes,
+  Repeat,
+  QrCode,
+  FileText,
+  Settings,
+  LogOut,
+  Building2,
+  Download,
+} from "lucide-react";
 import { signOut } from "@/app/lib/supabaseClient";
-import { useTheme } from "./ThemeProvider";
+import { getEntrepriseData } from "@/app/lib/store";
+
+const LIENS = [
+  { href: "/exports", label: "Exports", icon: Download },
+  { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/immobilisations", label: "Immobilisations", icon: Boxes },
+  { href: "/reaffectations", label: "Réaffectations", icon: Repeat },
+  { href: "/scan", label: "Scanner QR", icon: QrCode },
+  { href: "/immobilisations/rapport", label: "Rapport PDF", icon: FileText },
+  { href: "/parametres", label: "Paramètres", icon: Settings },
+];
+
+// ✅ NAV-02 / PAR-03 : couleur du texte calculée selon la luminance du fond (ratio WCAG)
+function texteSurFond(hex: string): string {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const r = parseInt(full.slice(0, 2), 16) / 255;
+  const g = parseInt(full.slice(2, 4), 16) / 255;
+  const b = parseInt(full.slice(4, 6), 16) / 255;
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.5 ? "#1f2937" : "#ffffff";
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
-  const [logo, setLogo] = useState<string>("");
-  const [couleurPrincipale, setCouleurPrincipale] = useState("#3b82f6");
-  const [nomEntreprise, setNomEntreprise] = useState("Gestion Immo");
-
-  const chargerDonnees = () => {
-    if (typeof window === "undefined") return;
-    const savedLogo = localStorage.getItem("entrepriseLogo");
-    const savedCouleur = localStorage.getItem("couleurPrincipale");
-    const savedNom = localStorage.getItem("nomEntreprise");
-    if (savedLogo) setLogo(savedLogo);
-    if (savedCouleur) setCouleurPrincipale(savedCouleur);
-    if (savedNom) setNomEntreprise(savedNom);
-  };
+  const [entreprise, setEntreprise] = useState(getEntrepriseData());
+  const [logoOk, setLogoOk] = useState(true);
 
   useEffect(() => {
-    chargerDonnees();
-    const handleStorage = () => chargerDonnees();
-    window.addEventListener("storage", handleStorage);
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-    };
-  }, [pathname]);
+    const maj = () => setEntreprise(getEntrepriseData());
+    window.addEventListener("storage", maj);
+    return () => window.removeEventListener("storage", maj);
+  }, []);
 
-  const menuItems = [
-    { href: "/dashboard", label: "Tableau de bord", icon: "📊" },
-    { href: "/immobilisations", label: "Immobilisations", icon: "📋" },
-    { href: "/immobilisations/ajouter", label: "Ajouter", icon: "➕" },
-    { href: "/scan", label: "Scanner QR", icon: "📷" },
-    { href: "/immobilisations/rapport", label: "Rapport PDF", icon: "📄" },
-    { href: "/reaffectations", label: "Réaffectations", icon: "🔄" },
-    { href: "/parametres", label: "Paramètres", icon: "⚙️" },
-  ];
+  const couleur = entreprise.couleurPrincipale || "#1e3a8a";
+  const texte = texteSurFond(couleur);
 
-  const handleDeconnexion = async () => {
-    try {
-      await signOut();
-      localStorage.clear();
-      router.push("/login");
-    } catch (error) {
-      console.error("Erreur déconnexion:", error);
-      router.push("/login");
+  const handleLogout = async () => {
+    await signOut();
+    window.location.href = "/login";
+  };
+
+  const estActif = (href: string) => {
+    if (href === "/immobilisations") {
+      return pathname === "/immobilisations" || pathname.startsWith("/immobilisations/ajouter");
     }
+    return pathname === href || pathname.startsWith(href + "/");
   };
-
-  const darkenColor = (color: string, percent: number): string => {
-    const num = parseInt(color.replace("#", ""), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = Math.max((num >> 16) - amt, 0);
-    const G = Math.max(((num >> 8) & 0x00FF) - amt, 0);
-    const B = Math.max((num & 0x0000FF) - amt, 0);
-    return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
-  };
-
-  const couleurFoncee = darkenColor(couleurPrincipale, 40);
 
   return (
-    <div 
-      className="w-64 min-h-screen flex flex-col fixed left-0 top-0 shadow-xl"
-      style={{ backgroundColor: couleurFoncee }}
+    <aside
+      className="fixed inset-y-0 left-0 w-64 flex flex-col z-40"
+      style={{ backgroundColor: couleur, color: texte }}
     >
-      <div 
-        className="p-5 border-b flex items-center gap-4"
-        style={{ borderColor: couleurPrincipale + "66" }}
-      >
-        {logo ? (
-          <img 
-            src={logo} 
-            alt="Logo" 
-            className="w-16 h-16 rounded-xl object-cover bg-white p-2 shadow-lg"
+      {/* ✅ PAR-05 : logo + nom du produit + nom de l'entreprise */}
+      <div className="flex items-center gap-3 px-5 py-5 border-b" style={{ borderColor: texte + "22" }}>
+        {logoOk && entreprise.logo ? (
+          <img
+            src={entreprise.logo}
+            alt=""
+            onError={() => setLogoOk(false)}
+            className="h-9 w-9 rounded-lg bg-white object-contain p-1"
           />
         ) : (
-          <div 
-            className="w-16 h-16 rounded-xl flex items-center justify-center text-3xl shadow-lg"
-            style={{ backgroundColor: couleurPrincipale }}
-          >
-            🏢
+          <div className="h-9 w-9 rounded-lg bg-white flex items-center justify-center shrink-0">
+            <Building2 className="h-5 w-5" style={{ color: couleur }} />
           </div>
         )}
-        <div className="min-w-0 flex-1">
-          <h1 className="font-bold text-xl text-white truncate leading-tight drop-shadow-md">
-            {nomEntreprise}
-          </h1>
-          <p className="text-xs text-white/90 mt-1 font-medium">Gestion Immobilisations</p>
+        <div className="min-w-0">
+          <p className="font-bold leading-tight truncate">Gestion Immo</p>
+          <p className="text-xs opacity-80 truncate">{entreprise.nom}</p>
         </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2">
-        {menuItems.map((item) => {
-          const isActive = pathname === item.href;
+      {/* ✅ NAV-05 : uniquement des LIEUX, pas d'action « Ajouter » */}
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {LIENS.map(({ href, label, icon: Icon }) => {
+          const actif = estActif(href);
           return (
             <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                isActive ? "font-bold shadow-lg" : "hover:bg-white/10"
+              key={href}
+              href={href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
+                actif ? "bg-white/25" : "opacity-80 hover:opacity-100 hover:bg-white/10"
               }`}
-              style={isActive ? { 
-                backgroundColor: "white",
-                color: couleurPrincipale,
-              } : {
-                backgroundColor: "transparent",
-                color: "white",
-              }}
+              style={{ color: texte }}
             >
-              <span className="text-2xl">{item.icon}</span>
-              <span className="text-base font-semibold" style={{ color: isActive ? couleurPrincipale : "white" }}>
-                {item.label}
-              </span>
+              <Icon className="h-5 w-5 shrink-0" />
+              {label}
             </Link>
           );
         })}
       </nav>
 
-      <div 
-        className="p-4 border-t"
-        style={{ borderColor: couleurPrincipale + "66" }}
-      >
+      {/* ✅ NAV-02 : pied de menu lisible (texte calculé selon le fond) */}
+      <div className="px-5 py-4 border-t space-y-2" style={{ borderColor: texte + "22" }}>
+        <p className="text-sm font-medium" style={{ color: texte }}>
+          {entreprise.nom || "Dé Logistics"}
+        </p>
         <button
-          onClick={toggleTheme}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-white opacity-80 hover:opacity-100 hover:bg-white/20 transition-all duration-200 w-full text-left mb-2"
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition"
+          style={{ color: texte }}
         >
-          <span className="text-2xl">{theme === "light" ? "🌙" : "️"}</span>
-          <span className="text-base font-semibold">
-            {theme === "light" ? "Mode sombre" : "Mode clair"}
-          </span>
-        </button>
-
-        <button
-          onClick={handleDeconnexion}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-white opacity-80 hover:opacity-100 hover:bg-red-600 transition-all duration-200 w-full text-left"
-        >
-          <span className="text-2xl">🚪</span>
-          <span className="text-base font-semibold">Déconnexion</span>
+          <LogOut className="h-4 w-4" />
+          Déconnexion
         </button>
       </div>
-    </div>
+    </aside>
   );
 }

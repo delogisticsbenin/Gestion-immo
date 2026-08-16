@@ -254,3 +254,12 @@ export const setDateCloture = (date: string) => {
   localStorage.setItem('dateCloture', date);
   window.dispatchEvent(new Event('storage'));
 };
+// ===== MOUVEMENTS (exports TRA-01) =====
+export const getHistoriqueReaffectations = async () => {
+  const { data, error } = await supabase
+    .from('historique_reaffectations')
+    .select('*')
+    .order('date_reaffectation', { ascending: false });
+  if (error) { console.error("Erreur récupération mouvements:", error); return []; }
+  return data || [];
+};
