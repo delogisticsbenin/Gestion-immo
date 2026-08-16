@@ -1,17 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Récupération des variables d'environnement
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Vérification que les variables existent
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('❌ Les variables Supabase ne sont pas configurées. Vérifiez le fichier .env.local');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Types pour TypeScript
 export type Entreprise = {
   id: string;
   nom: string;
@@ -76,14 +73,10 @@ export type HistoriqueReaffectation = {
   date_reaffectation: string;
   created_at: string;
 };
-// ... (gardez tout le code existant)
 
 // === AUTHENTIFICATION ===
 export const signIn = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   return { data, error };
 };
 
@@ -95,6 +88,12 @@ export const signOut = async () => {
 export const getCurrentUser = async () => {
   const { data: { user } } = await supabase.auth.getUser();
   return user;
+};
+
+// ✅ CON-02 : session active
+export const getSession = async () => {
+  const { data } = await supabase.auth.getSession();
+  return data.session;
 };
 
 export const onAuthStateChange = (callback: (user: any) => void) => {

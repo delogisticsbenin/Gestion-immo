@@ -9,6 +9,8 @@ import {
 } from 'recharts';
 import {
   getImmobilisations,
+  getServices,
+  getCategories,
   getDevise,
   formatMontant,
   initEntreprise,
@@ -18,6 +20,8 @@ const COULEURS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function DashboardPage() {
   const [immobilisations, setImmobilisations] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [devise, setDevise] = useState(getDevise());
   const [alertes, setAlertes] = useState<any[]>([]);
   const [chargement, setChargement] = useState(true);
@@ -26,27 +30,29 @@ export default function DashboardPage() {
     setChargement(true);
     await initEntreprise();
     setDevise(getDevise());
-    
-    const data = await getImmobilisations();
-    setImmobilisations(data);
 
-    // Générer les alertes dynamiquement
-    const nouvellesAlertes = [];
+    const [immoData, servicesData, categoriesData] = await Promise.all([
+      getImmobilisations(),
+      getServices(),
+      getCategories(),
+    ]);
+    setImmobilisations(immoData);
+    setServices(servicesData);
+    setCategories(categoriesData);
 
-    // Alerte équipements en panne
-    const enPanne = data.filter((i) => i.etat === "En panne");
-    if (enPanne.length > 0) {
+    // Alertes dynamiques
+    const nouvellesAlertes: any[] = [];
+    const enPanneListe = immoData.filter((i) => i.etat === "En panne" && i.statut !== "sorti");
+    if (enPanneListe.length > 0) {
       nouvellesAlertes.push({
         id: 1,
         type: '⚠️',
-        message: `${enPanne.length} équipement(s) signalé(s) en panne`,
+        message: `${enPanneListe.length} équipement(s) signalé(s) en panne`,
         couleur: 'text-red-600 bg-red-50',
       });
     }
-
-    // Dernier ajout
-    if (data.length > 0) {
-      const dernier = data[0];
+    if (immoData.length > 0) {
+      const dernier = immoData[0];
       nouvellesAlertes.push({
         id: 2,
         type: '✅',
@@ -54,7 +60,6 @@ export default function DashboardPage() {
         couleur: 'text-green-600 bg-green-50',
       });
     }
-
     if (nouvellesAlertes.length === 0) {
       nouvellesAlertes.push({
         id: 0,
@@ -63,7 +68,6 @@ export default function DashboardPage() {
         couleur: 'text-gray-600 bg-gray-50',
       });
     }
-
     setAlertes(nouvellesAlertes);
     setChargement(false);
   };
@@ -72,25 +76,41 @@ export default function DashboardPage() {
     chargerDonnees();
   }, []);
 
-  const totalImmobilisations = immobilisations.length;
-  const valeurTotale = immobilisations.reduce((sum: number, item: any) => sum + (item.montant || 0), 0);
-  const enPanne = immobilisations.filter((item: any) => item.etat === "En panne").length;
-  const amortis = immobilisations.filter((item: any) => (item.annee_amortissement || 5) <= 5).length;
+  // Indicateurs calculés uniquement sur les équipements EN SERVICE (IMM-02)
+  const enService = immobilisations.filter((i: any) => i.statut !== 'sorti');
+
+  const totalImmobilisations = enService.length;
+  const valeurTotale = enService.reduce((sum: number, item: any) => sum + (item.montant || 0), 0);
+  const enPanne = enService.filter((item: any) => item.etat === "En panne").length;
+
+  // ✅ TDB-10 : vrai calcul d'amortissement avec garde-fou
+  const estTotalementAmorti = (item: any) => {
+    const cat = categories.find((c: any) => c.nom === item.categorie);
+    const duree = item.annee_amortissement && item.annee_amortissement > 0
+      ? item.annee_amortissement
+      : cat?.duree_utilite;
+    if (!duree || duree <= 0) return false; // pas de durée = pas de calcul
+    const annees = Math.max(0, new Date().getFullYear() - new Date(item.date_acquisition).getFullYear());
+    return annees >= duree;
+  };
+  const amortis = enService.filter((item: any) => estTotalementAmorti(item)).length;
 
   const dataParCategorie = (() => {
     const grouped: { [key: string]: number } = {};
-    immobilisations.forEach((item: any) => {
+    enService.forEach((item: any) => {
       const cat = item.categorie || "Autre";
       grouped[cat] = (grouped[cat] || 0) + (item.montant || 0);
     });
     return Object.entries(grouped).map(([name, value]) => ({ name, value }));
   })();
 
+  // ✅ TDB-01 : agrégation par NOM de service via le référentiel (service_id → services)
   const dataParService = (() => {
     const grouped: { [key: string]: number } = {};
-    immobilisations.forEach((item: any) => {
-      const service = item.service_nom || "Autre";
-      grouped[service] = (grouped[service] || 0) + (item.montant || 0);
+    enService.forEach((item: any) => {
+      const svc = services.find((s: any) => s.id === item.service_id);
+      const cle = svc?.nom?.trim() || "Autre";
+      grouped[cle] = (grouped[cle] || 0) + (item.montant || 0);
     });
     return Object.entries(grouped).map(([name, valeur]) => ({ name, valeur }));
   })();
