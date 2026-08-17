@@ -263,3 +263,51 @@ export const getHistoriqueReaffectations = async () => {
   if (error) { console.error("Erreur récupération mouvements:", error); return []; }
   return data || [];
 };
+// ===== RÉAFFECTATION TRACÉE (REA-02, REA-03) =====
+export const reaffecterImmobilisation = async (params: {
+  immobilisationId: string;
+  nouveauServiceId: string | null;
+  nouveauPersonnelId: string | null;
+  motif: string;
+  commentaire?: string;
+  auteur?: string;
+  dateEffet?: string;
+}) => {
+  const immo = await getImmobilisationById(params.immobilisationId);
+  if (!immo) throw new Error("Immobilisation introuvable");
+
+  const { error: errUpd } = await supabase
+    .from('immobilisations')
+    .update({ service_id: params.nouveauServiceId, personnel_id: params.nouveauPersonnelId })
+    .eq('id', params.immobilisationId);
+  if (errUpd) throw errUpd;
+
+  const { error: errHist } = await supabase
+    .from('historique_reaffectations')
+    .insert([{
+      immobilisation_id: params.immobilisationId,
+      ancien_service_id: immo.service_id || null,
+      ancien_personnel_id: immo.personnel_id || null,
+      nouveau_service_id: params.nouveauServiceId,
+      nouveau_personnel_id: params.nouveauPersonnelId,
+      motif: params.motif,
+      commentaire: params.commentaire || null,
+      auteur: params.auteur || null,
+      date_reaffectation: params.dateEffet || new Date().toISOString().slice(0, 10),
+    }]);
+  if (errHist) throw errHist;
+  return true;
+};
+
+// ===== JOURNAL D'AUDIT (TRA-02, IMM-03) =====
+export const ajouterAuJournal = async (entree: {
+  table_concernee: string;
+  enregistrement_id: string;
+  champ: string;
+  ancienne_valeur: string;
+  nouvelle_valeur: string;
+  auteur: string;
+}) => {
+  const { error } = await supabase.from('journal_audit').insert([entree]);
+  if (error) console.error("Erreur journal d'audit:", error);
+};

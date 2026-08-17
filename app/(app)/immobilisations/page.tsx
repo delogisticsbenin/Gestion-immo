@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  getImmobilisations, 
-  getServices, 
-  getPersonnels, 
+import {
+  getImmobilisations,
+  getServices,
+  getPersonnels,
   formatMontant,
   deleteImmobilisation,
   sortirDuParc
 } from "@/app/lib/store";
+import BoutonsExport from "@/app/components/BoutonsExport";
+import ModaleEditionImmo from "@/app/components/ModaleEditionImmo";
 
 export default function ImmobilisationsPage() {
   const [immobilisations, setImmobilisations] = useState<any[]>([]);
@@ -22,7 +24,10 @@ export default function ImmobilisationsPage() {
   const [filtreService, setFiltreService] = useState("");
   const [afficherSortis, setAfficherSortis] = useState(false);
 
-  // Modale de sortie du parc (IMM-02)
+  // ✅ IMM-03 : édition
+  const [immoEnEdition, setImmoEnEdition] = useState<any | null>(null);
+
+  // ✅ IMM-02 : sortie du parc
   const [modaleSortie, setModaleSortie] = useState<{ ouvert: boolean; immoId: string; immoCode: string }>({
     ouvert: false,
     immoId: "",
@@ -139,7 +144,7 @@ export default function ImmobilisationsPage() {
 
   return (
     <div className="p-8">
-      {/* En-tête — sans bouton retour (NAV-04) */}
+      {/* En-tête — sans bouton retour (NAV-04), avec exports (TRA-01) */}
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Liste des Immobilisations</h1>
@@ -147,12 +152,27 @@ export default function ImmobilisationsPage() {
             {immobilisationsFiltrees.length} équipement(s) • Valeur totale : {formatMontant(valeurTotale)}
           </p>
         </div>
-        <Link
-          href="/immobilisations/ajouter"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-        >
-          ➕ Ajouter
-        </Link>
+        <div className="flex items-center gap-3">
+          <BoutonsExport
+            nomFichier="immobilisations"
+            lignes={immobilisationsFiltrees}
+            colonnes={[
+              { cle: "code_interne", titre: "Code" },
+              { cle: "nom", titre: "Désignation" },
+              { cle: "categorie", titre: "Catégorie" },
+              { cle: "etat", titre: "État" },
+              { cle: "montant", titre: "Montant" },
+              { cle: "service_id", titre: "Service" },
+            ]}
+            nomFeuille="Immobilisations"
+          />
+          <Link
+            href="/immobilisations/ajouter"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            ➕ Ajouter
+          </Link>
+        </div>
       </div>
 
       {/* Filtres */}
@@ -285,6 +305,15 @@ export default function ImmobilisationsPage() {
                   <td className="py-3 px-4 text-sm text-gray-600">{getPersonnelNom(immo.personnel_id)}</td>
                   <td className="py-3 px-4">
                     <div className="flex gap-2">
+                      {/* ✅ IMM-03 : édition */}
+                      <button
+                        onClick={() => setImmoEnEdition(immo)}
+                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-sm font-medium"
+                        title="Modifier"
+                      >
+                        ✏️ Modifier
+                      </button>
+                      {/* ✅ IMM-02 : sortie du parc */}
                       {immo.statut !== 'sorti' && (
                         <button
                           onClick={() => ouvrirModaleSortie(immo.id, immo.code_interne)}
@@ -319,7 +348,7 @@ export default function ImmobilisationsPage() {
         </div>
       </div>
 
-      {/* Modale de sortie du parc */}
+      {/* Modale de sortie du parc (IMM-02) */}
       {modaleSortie.ouvert && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
@@ -372,6 +401,15 @@ export default function ImmobilisationsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ✅ IMM-03 : modale d'édition */}
+      {immoEnEdition && (
+        <ModaleEditionImmo
+          immo={immoEnEdition}
+          onClose={() => setImmoEnEdition(null)}
+          onSaved={() => { setImmoEnEdition(null); chargerDonnees(); }}
+        />
       )}
     </div>
   );
