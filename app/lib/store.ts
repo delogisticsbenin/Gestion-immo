@@ -280,6 +280,19 @@ export const getHistoriqueReaffectations = async () => {
   return data || [];
 };
 
+// ===== TÉLÉVERSEMENT DU LOGO (PAR-04) =====
+export const televerserLogo = async (file: File) => {
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+  const chemin = `logo-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('logos').upload(chemin, file, {
+    cacheControl: '3600',
+    upsert: true,
+  });
+  if (error) { console.error("Erreur téléversement logo:", error); throw error; }
+  const { data } = supabase.storage.from('logos').getPublicUrl(chemin);
+  return data.publicUrl;
+};
+
 // ===== UTILITAIRES =====
 export const formatMontant = (montant: number) => {
   return new Intl.NumberFormat('fr-FR', {

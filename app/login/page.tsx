@@ -15,6 +15,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [chargement, setChargement] = useState(false);
   const [logoOk, setLogoOk] = useState(true);
+  // ✅ PAR-04/05 : logo téléversé depuis les Paramètres, sinon logo local
+  const [logoUrl] = useState(() =>
+    (typeof window !== "undefined" && localStorage.getItem("entrepriseLogo")) || "/logo-delogistics.png"
+  );
   const [verrouillage, setVerrouillage] = useState<{ actif: boolean; secondesRestantes: number }>({
     actif: false,
     secondesRestantes: 0,
@@ -122,7 +126,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           {logoOk ? (
             <img
-              src="/logo-delogistics.png"
+              src={logoUrl}
               alt="Dé Logistics"
               onError={() => setLogoOk(false)}
               className="mx-auto mb-4 h-16 w-auto object-contain"

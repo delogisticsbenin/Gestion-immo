@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import OngletUtilisateurs from "@/app/components/OngletUtilisateurs";
+import { toast } from "@/app/components/Toasts";
 import { 
   getEntrepriseData, 
   updateEntrepriseData,
@@ -22,7 +23,8 @@ import {
   getDateCloture,
   setDateCloture,
   countImmobilisationsParService,
-  countImmobilisationsParPersonnel
+  countImmobilisationsParPersonnel,
+  televerserLogo
 } from "@/app/lib/store";
 
 type Onglet = 'entreprise' | 'categories' | 'services' | 'personnel' | 'utilisateurs';
@@ -85,6 +87,19 @@ export default function ParametresPage() {
     setDateCloture(dateCloture);
     setSauvegarde(true);
     setTimeout(() => setSauvegarde(false), 3000);
+  };
+
+  // ✅ PAR-04 : téléversement du logo
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      const url = await televerserLogo(f);
+      setLogo(url);
+      toast("Logo téléversé. Cliquez sur « Enregistrer ».", "succes");
+    } catch {
+      toast("Échec du téléversement du logo.", "erreur");
+    }
   };
 
   // === CATÉGORIES (PAR-01) ===
@@ -283,12 +298,20 @@ export default function ParametresPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Logo (URL)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Logo</label>
+                {/* ✅ PAR-04 : téléversement d'un fichier image */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleUploadLogo}
+                  className="w-full text-sm text-gray-600 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 file:font-medium file:cursor-pointer hover:file:bg-blue-100"
+                />
+                <p className="text-xs text-gray-500 mt-1">…ou collez une URL ci-dessous.</p>
                 <input
                   type="text"
                   value={logo}
                   onChange={(e) => setLogo(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-2 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   placeholder="https://..."
                 />
                 {logo && <img src={logo} alt="Aperçu" className="mt-4 w-32 h-32 object-cover rounded-lg border" />}
