@@ -12,6 +12,7 @@ import {
 } from "@/app/lib/store";
 import BoutonsExport from "@/app/components/BoutonsExport";
 import ModaleEditionImmo from "@/app/components/ModaleEditionImmo";
+import { toast } from "@/app/components/Toasts";
 
 export default function ImmobilisationsPage() {
   const [immobilisations, setImmobilisations] = useState<any[]>([]);
@@ -23,6 +24,7 @@ export default function ImmobilisationsPage() {
   const [filtreEtat, setFiltreEtat] = useState("");
   const [filtreService, setFiltreService] = useState("");
   const [afficherSortis, setAfficherSortis] = useState(false);
+  const [tri, setTri] = useState("date_desc");
 
   // ✅ IMM-03 : édition
   const [immoEnEdition, setImmoEnEdition] = useState<any | null>(null);
@@ -74,12 +76,12 @@ export default function ImmobilisationsPage() {
     setTraitement(true);
     try {
       await sortirDuParc(modaleSortie.immoId, motifSortie, dateSortie);
-      alert(`Équipement ${modaleSortie.immoCode} sorti du parc (${motifSortie}).`);
+      toast(`Équipement ${modaleSortie.immoCode} sorti du parc (${motifSortie}).`, "succes");
       fermerModaleSortie();
       await chargerDonnees();
     } catch (error) {
       console.error("Erreur sortie du parc:", error);
-      alert("Erreur lors de la sortie du parc");
+      toast("Erreur lors de la sortie du parc.", "erreur");
     } finally {
       setTraitement(false);
     }
@@ -89,17 +91,17 @@ export default function ImmobilisationsPage() {
   const handleDelete = async (id: string, code: string, dateCreation: string) => {
     const heuresEcoulees = (Date.now() - new Date(dateCreation).getTime()) / (1000 * 60 * 60);
     if (heuresEcoulees > 24) {
-      alert("Suppression impossible après 24 h : utilisez « Sortir du parc » pour conserver la piste d'audit.");
+      toast("Suppression impossible après 24 h : utilisez « Sortir du parc ».", "erreur");
       return;
     }
     if (!confirm(`Supprimer définitivement l'équipement ${code} (erreur de saisie) ?`)) return;
     try {
       await deleteImmobilisation(id);
       await chargerDonnees();
-      alert("Équipement supprimé.");
+      toast("Équipement supprimé.", "succes");
     } catch (error) {
       console.error("Erreur suppression:", error);
-      alert("Erreur lors de la suppression");
+      toast("Erreur lors de la suppression.", "erreur");
     }
   };
 
@@ -113,6 +115,13 @@ export default function ImmobilisationsPage() {
     const matchEtat = !filtreEtat || immo.etat === filtreEtat;
     const matchService = !filtreService || immo.service_id === filtreService;
     return matchRecherche && matchCategorie && matchEtat && matchService;
+  });
+
+  // ✅ IMM-06 : tri de la liste
+  const immobilisationsTriees = [...immobilisationsFiltrees].sort((a, b) => {
+    if (tri === "montant_desc") return (b.montant || 0) - (a.montant || 0);
+    if (tri === "code_asc") return (a.code_interne || "").localeCompare(b.code_interne || "");
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
   });
 
   const getServiceNom = (serviceId: string) => services.find(s => s.id === serviceId)?.nom || "-";
@@ -162,7 +171,6 @@ export default function ImmobilisationsPage() {
               { cle: "categorie", titre: "Catégorie" },
               { cle: "etat", titre: "État" },
               { cle: "montant", titre: "Montant" },
-              { cle: "service_id", titre: "Service" },
             ]}
             nomFeuille="Immobilisations"
           />
@@ -177,8 +185,8 @@ export default function ImmobilisationsPage() {
 
       {/* Filtres */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">🔍 Filtres et recherche</h2>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">🔍 Filtres, recherche et tri</h2>
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Recherche</label>
             <input
@@ -232,6 +240,18 @@ export default function ImmobilisationsPage() {
               ))}
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Trier par</label>
+            <select
+              value={tri}
+              onChange={(e) => setTri(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="date_desc">Plus récents</option>
+              <option value="montant_desc">Montant décroissant</option>
+              <option value="code_asc">Code (A→Z)</option>
+            </select>
+          </div>
           <div className="flex items-end pb-2">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -264,7 +284,7 @@ export default function ImmobilisationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {immobilisationsFiltrees.map((immo) => (
+              {immobilisationsTriees.map((immo) => (
                 <tr key={immo.id} className={`hover:bg-gray-50 ${immo.statut === 'sorti' ? 'opacity-50' : ''}`}>
                   <td className="py-3 px-4 text-sm font-mono text-blue-600 font-medium">{immo.code_interne}</td>
                   <td className="py-3 px-4">
@@ -305,7 +325,6 @@ export default function ImmobilisationsPage() {
                   <td className="py-3 px-4 text-sm text-gray-600">{getPersonnelNom(immo.personnel_id)}</td>
                   <td className="py-3 px-4">
                     <div className="flex gap-2">
-                      {/* ✅ IMM-03 : édition */}
                       <button
                         onClick={() => setImmoEnEdition(immo)}
                         className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-sm font-medium"
@@ -313,7 +332,6 @@ export default function ImmobilisationsPage() {
                       >
                         ✏️ Modifier
                       </button>
-                      {/* ✅ IMM-02 : sortie du parc */}
                       {immo.statut !== 'sorti' && (
                         <button
                           onClick={() => ouvrirModaleSortie(immo.id, immo.code_interne)}
@@ -333,7 +351,7 @@ export default function ImmobilisationsPage() {
                   </td>
                 </tr>
               ))}
-              {immobilisationsFiltrees.length === 0 && (
+              {immobilisationsTriees.length === 0 && (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-gray-500">Aucun équipement trouvé</td>
                 </tr>
@@ -343,7 +361,7 @@ export default function ImmobilisationsPage() {
         </div>
         <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
           <p className="text-sm text-gray-600">
-            Affichage de {immobilisationsFiltrees.length} sur {immobilisations.length} équipement(s)
+            Affichage de {immobilisationsTriees.length} sur {immobilisations.length} équipement(s)
           </p>
         </div>
       </div>
@@ -408,7 +426,7 @@ export default function ImmobilisationsPage() {
         <ModaleEditionImmo
           immo={immoEnEdition}
           onClose={() => setImmoEnEdition(null)}
-          onSaved={() => { setImmoEnEdition(null); chargerDonnees(); }}
+          onSaved={() => { setImmoEnEdition(null); chargerDonnees(); toast("Modifications enregistrées.", "succes"); }}
         />
       )}
     </div>

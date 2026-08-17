@@ -76,7 +76,7 @@ export default function DashboardPage() {
     chargerDonnees();
   }, []);
 
-  // Indicateurs calculés uniquement sur les équipements EN SERVICE (IMM-02)
+  // Indicateurs sur les équipements EN SERVICE uniquement (IMM-02)
   const enService = immobilisations.filter((i: any) => i.statut !== 'sorti');
 
   const totalImmobilisations = enService.length;
@@ -89,7 +89,7 @@ export default function DashboardPage() {
     const duree = item.annee_amortissement && item.annee_amortissement > 0
       ? item.annee_amortissement
       : cat?.duree_utilite;
-    if (!duree || duree <= 0) return false; // pas de durée = pas de calcul
+    if (!duree || duree <= 0) return false;
     const annees = Math.max(0, new Date().getFullYear() - new Date(item.date_acquisition).getFullYear());
     return annees >= duree;
   };
@@ -104,7 +104,7 @@ export default function DashboardPage() {
     return Object.entries(grouped).map(([name, value]) => ({ name, value }));
   })();
 
-  // ✅ TDB-01 : agrégation par NOM de service via le référentiel (service_id → services)
+  // ✅ TDB-01 : agrégation par NOM de service via le référentiel
   const dataParService = (() => {
     const grouped: { [key: string]: number } = {};
     enService.forEach((item: any) => {
@@ -146,9 +146,10 @@ export default function DashboardPage() {
             <p className="text-sm text-gray-500">Valeur Totale</p>
             <p className="text-3xl font-bold text-gray-900">{formatMontant(valeurTotale)}</p>
           </div>
-          <div className="bg-white p-5 rounded-xl shadow-sm border-l-4 border-red-500">
+          {/* ✅ TDB-05 : vert si aucune panne, rouge sinon */}
+          <div className={`bg-white p-5 rounded-xl shadow-sm border-l-4 ${enPanne === 0 ? "border-green-500" : "border-red-500"}`}>
             <p className="text-sm text-gray-500">En Panne</p>
-            <p className="text-3xl font-bold text-red-600">{enPanne}</p>
+            <p className={`text-3xl font-bold ${enPanne === 0 ? "text-green-600" : "text-red-600"}`}>{enPanne}</p>
           </div>
           <div className="bg-white p-5 rounded-xl shadow-sm border-l-4 border-yellow-500">
             <p className="text-sm text-gray-500">Totalement Amortis</p>
