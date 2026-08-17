@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import OngletUtilisateurs from "@/app/components/OngletUtilisateurs";
 import { 
   getEntrepriseData, 
   updateEntrepriseData,
@@ -24,7 +25,7 @@ import {
   countImmobilisationsParPersonnel
 } from "@/app/lib/store";
 
-type Onglet = 'entreprise' | 'categories' | 'services' | 'personnel';
+type Onglet = 'entreprise' | 'categories' | 'services' | 'personnel' | 'utilisateurs';
 
 export default function ParametresPage() {
   const [ongletActif, setOngletActif] = useState<Onglet>('entreprise');
@@ -192,7 +193,7 @@ export default function ParametresPage() {
 
       {/* Onglets */}
       <div className="max-w-4xl mx-auto mb-6">
-        <div className="flex gap-2 border-b border-gray-200">
+        <div className="flex gap-2 border-b border-gray-200 flex-wrap">
           <button
             onClick={() => setOngletActif('entreprise')}
             className={`px-6 py-3 font-medium transition ${
@@ -232,6 +233,16 @@ export default function ParametresPage() {
             }`}
           >
             👥 Personnel
+          </button>
+          <button
+            onClick={() => setOngletActif('utilisateurs')}
+            className={`px-6 py-3 font-medium transition ${
+              ongletActif === 'utilisateurs'
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            👤 Utilisateurs
           </button>
         </div>
       </div>
@@ -573,6 +584,9 @@ export default function ParametresPage() {
             </div>
           </div>
         )}
+
+        {/* Onglet Utilisateurs (PAR-06) */}
+        {ongletActif === 'utilisateurs' && <OngletUtilisateurs />}
       </div>
     </div>
   );
