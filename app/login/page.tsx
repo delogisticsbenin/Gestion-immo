@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signIn, getSession } from "@/app/lib/supabaseClient";
+import { signIn, getSession, signOut, supabase } from "@/app/lib/supabaseClient";
 
 const MAX_TENTATIVES = 5;
 const DUREE_VERROUILLAGE_BASE = 30; // secondes
@@ -87,7 +87,23 @@ export default function LoginPage() {
 
       if (error) {
         setError(enregistrerEchec());
-      } else if (data.user) {
+        return;
+      }
+
+      if (data.user) {
+        // ✅ PAR-06 : bloquer les comptes révoqués
+        const { data: profil } = await supabase
+          .from('utilisateurs')
+          .select('actif')
+          .eq('email', email.trim().toLowerCase())
+          .maybeSingle();
+
+        if (profil && profil.actif === false) {
+          await signOut();
+          setError("Compte révoqué. Contactez l'administrateur.");
+          return;
+        }
+
         reinitialiserTentatives();
         window.location.href = "/dashboard";
       }
