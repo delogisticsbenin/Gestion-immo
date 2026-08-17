@@ -15,6 +15,8 @@ import {
   formatMontant,
   initEntreprise,
 } from "@/app/lib/store";
+import { supabase } from "@/app/lib/supabaseClient";
+import { toast } from "@/app/components/Toasts";
 
 const COULEURS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -25,6 +27,51 @@ export default function DashboardPage() {
   const [devise, setDevise] = useState(getDevise());
   const [alertes, setAlertes] = useState<any[]>([]);
   const [chargement, setChargement] = useState(true);
+  const [profil, setProfil] = useState<any | null>(null);
+
+  // ✅ Profil de la personne réellement connectée (nom, email, rôle, photo)
+  const chargerProfil = async () => {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
+    const email = (data.user.email || "").toLowerCase();
+    const { data: profilDb } = await supabase
+      .from("utilisateurs")
+      .select("nom, role, avatar_url")
+      .eq("email", email)
+      .maybeSingle();
+    setProfil({
+      id: data.user.id,
+      email,
+      nom: profilDb?.nom || (data.user.user_metadata?.nom as string) || email.split("@")[0],
+      role: profilDb?.role || "administrateur",
+      avatarUrl: profilDb?.avatar_url || "",
+    });
+  };
+
+  // ✅ Photo de profil : clic sur l'avatar → upload
+  const handleAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f || !profil) return;
+    try {
+      const ext = (f.name.split(".").pop() || "png").toLowerCase();
+      const chemin = `avatar-${profil.id}.${ext}`;
+      const { error } = await supabase.storage
+        .from("logos")
+        .upload(chemin, f, { cacheControl: "3600", upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("logos").getPublicUrl(chemin);
+      const url = data.publicUrl;
+      await supabase.from("utilisateurs").update({ avatar_url: url }).eq("email", profil.email);
+      setProfil({ ...profil, avatarUrl: url });
+      toast("Photo de profil enregistrée.", "succes");
+    } catch {
+      toast("Échec de l'envoi de la photo.", "erreur");
+    }
+  };
+
+  const initiales = profil
+    ? profil.nom.split(/\s+/).map((m: string) => m[0] || "").join("").slice(0, 2).toUpperCase()
+    : "…";
 
   const chargerDonnees = async () => {
     setChargement(true);
@@ -73,6 +120,7 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    chargerProfil();
     chargerDonnees();
   }, []);
 
@@ -131,9 +179,31 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold text-gray-900">📊 Tableau de bord analytique</h1>
             <p className="text-gray-500">Vue d'ensemble du parc d'immobilisations • Devise : {devise.symbole}</p>
           </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Administrateur connecté</p>
-            <p className="font-semibold text-gray-900">admin@entreprise.com</p>
+
+          {/* ✅ Profil connecté : photo + nom + email + rôle */}
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="font-semibold text-gray-900">{profil?.nom || "…"}</p>
+              <p className="text-sm text-gray-500">{profil?.email || ""}</p>
+              <p className="text-xs text-blue-600 capitalize">{profil?.role || ""}</p>
+            </div>
+            <label className="relative cursor-pointer shrink-0" title="Changer ma photo de profil">
+              <input type="file" accept="image/*" className="hidden" onChange={handleAvatar} />
+              {profil?.avatarUrl ? (
+                <img
+                  src={profil.avatarUrl}
+                  alt="Photo de profil"
+                  className="h-12 w-12 rounded-full object-cover border-2 border-blue-500"
+                />
+              ) : (
+                <div className="h-12 w-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
+                  {initiales}
+                </div>
+              )}
+              <span className="absolute -bottom-1 -right-1 bg-blue-600 text-white rounded-full p-1 text-[10px] leading-none">
+                📷
+              </span>
+            </label>
           </div>
         </div>
 

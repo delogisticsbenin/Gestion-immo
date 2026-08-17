@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   Building2,
+  FileUp,
   Download,
   History as HistoryIcon,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const LIENS = [
   { href: "/immobilisations", label: "Immobilisations", icon: Boxes },
   { href: "/reaffectations", label: "Réaffectations", icon: Repeat },
   { href: "/scan", label: "Scanner QR", icon: QrCode },
+  { href: "/import", label: "Import Excel", icon: FileUp },
   { href: "/immobilisations/rapport", label: "Rapport PDF", icon: FileText },
   { href: "/parametres", label: "Paramètres", icon: Settings },
 ];

@@ -360,3 +360,18 @@ export const setDateCloture = (date: string) => {
   localStorage.setItem('dateCloture', date);
   window.dispatchEvent(new Event('storage'));
 };
+// ===== IMPORT MASSIF (anciens équipements) =====
+export const importImmobilisations = async (lignes: any[]) => {
+  const { data, error } = await supabase.from('immobilisations').insert(lignes).select();
+  if (error) { console.error("Erreur import immobilisations:", error); throw error; }
+  const auteur = await auteurCourant();
+  await ajouterAuJournal({
+    table_concernee: "immobilisations",
+    enregistrement_id: "lot-import",
+    champ: "import",
+    ancienne_valeur: "",
+    nouvelle_valeur: `${lignes.length} équipement(s) importé(s)`,
+    auteur,
+  });
+  return data;
+};
