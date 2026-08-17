@@ -12,26 +12,27 @@ import {
   Settings,
   LogOut,
   Building2,
-  FileUp,
   Download,
+  FileUp,
   History as HistoryIcon,
 } from "lucide-react";
 import { signOut } from "@/app/lib/supabaseClient";
 import { getEntrepriseData } from "@/app/lib/store";
+import { useRole, PAGES_PAR_ROLE } from "@/app/lib/roles";
 
 const LIENS = [
-  { href: "/exports", label: "Exports", icon: Download },
-  { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
-  { href: "/journal", label: "Journal d'audit", icon: HistoryIcon },
-  { href: "/immobilisations", label: "Immobilisations", icon: Boxes },
-  { href: "/reaffectations", label: "Réaffectations", icon: Repeat },
-  { href: "/scan", label: "Scanner QR", icon: QrCode },
-  { href: "/import", label: "Import Excel", icon: FileUp },
-  { href: "/immobilisations/rapport", label: "Rapport PDF", icon: FileText },
-  { href: "/parametres", label: "Paramètres", icon: Settings },
+  { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, page: "dashboard" },
+  { href: "/immobilisations", label: "Immobilisations", icon: Boxes, page: "immobilisations" },
+  { href: "/reaffectations", label: "Réaffectations", icon: Repeat, page: "reaffectations" },
+  { href: "/scan", label: "Scanner QR", icon: QrCode, page: "scan" },
+  { href: "/immobilisations/rapport", label: "Rapport PDF", icon: FileText, page: "rapport" },
+  { href: "/exports", label: "Exports", icon: Download, page: "exports" },
+  { href: "/journal", label: "Journal d'audit", icon: HistoryIcon, page: "journal" },
+  { href: "/import", label: "Import Excel", icon: FileUp, page: "import" },
+  { href: "/parametres", label: "Paramètres", icon: Settings, page: "parametres" },
 ];
 
-// ✅ NAV-02 / PAR-03 : couleur du texte calculée selon la luminance du fond (ratio WCAG)
+// Texte lisible quelle que soit la couleur de fond (NAV-02)
 function texteSurFond(hex: string): string {
   const h = hex.replace("#", "");
   const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
@@ -44,6 +45,7 @@ function texteSurFond(hex: string): string {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const role = useRole();
   const [entreprise, setEntreprise] = useState(getEntrepriseData());
   const [logoOk, setLogoOk] = useState(true);
 
@@ -55,6 +57,9 @@ export default function Sidebar() {
 
   const couleur = entreprise.couleurPrincipale || "#1e3a8a";
   const texte = texteSurFond(couleur);
+
+  // ✅ Menu filtré selon le rôle
+  const liensVisibles = role ? LIENS.filter((l) => PAGES_PAR_ROLE[role].includes(l.page)) : [];
 
   const handleLogout = async () => {
     await signOut();
@@ -70,10 +75,9 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="fixed inset-y-0 left-0 w-64 flex flex-col z-40"
+      className="fixed inset-y-0 left-0 w-64 flex flex-col z-40 print:hidden"
       style={{ backgroundColor: couleur, color: texte }}
     >
-      {/* ✅ PAR-05 : logo + nom du produit + nom de l'entreprise */}
       <div className="flex items-center gap-3 px-5 py-5 border-b" style={{ borderColor: texte + "22" }}>
         {logoOk && entreprise.logo ? (
           <img
@@ -93,9 +97,8 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* ✅ NAV-05 : uniquement des LIEUX, pas d'action « Ajouter » */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {LIENS.map(({ href, label, icon: Icon }) => {
+        {liensVisibles.map(({ href, label, icon: Icon }) => {
           const actif = estActif(href);
           return (
             <Link
@@ -113,10 +116,9 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* ✅ NAV-02 : pied de menu lisible (texte calculé selon le fond) */}
       <div className="px-5 py-4 border-t space-y-2" style={{ borderColor: texte + "22" }}>
-        <p className="text-sm font-medium" style={{ color: texte }}>
-          {entreprise.nom || "Dé Logistics"}
+        <p className="text-sm font-medium capitalize" style={{ color: texte }}>
+          {role || "…"}
         </p>
         <button
           onClick={handleLogout}

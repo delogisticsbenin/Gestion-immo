@@ -13,6 +13,7 @@ import {
 import BoutonsExport from "@/app/components/BoutonsExport";
 import ModaleEditionImmo from "@/app/components/ModaleEditionImmo";
 import { toast } from "@/app/components/Toasts";
+import { usePeutEcrire } from "@/app/lib/roles";
 
 export default function ImmobilisationsPage() {
   const [immobilisations, setImmobilisations] = useState<any[]>([]);
@@ -25,6 +26,9 @@ export default function ImmobilisationsPage() {
   const [filtreService, setFiltreService] = useState("");
   const [afficherSortis, setAfficherSortis] = useState(false);
   const [tri, setTri] = useState("date_desc");
+
+  // ✅ PAR-06 : lecteur = lecture seule
+  const peutEcrire = usePeutEcrire();
 
   // ✅ IMM-03 : édition
   const [immoEnEdition, setImmoEnEdition] = useState<any | null>(null);
@@ -81,7 +85,7 @@ export default function ImmobilisationsPage() {
       await chargerDonnees();
     } catch (error) {
       console.error("Erreur sortie du parc:", error);
-      toast("Erreur lors de la sortie du parc.", "erreur");
+      toast("Erreur lors de la sortie du parc (permissions insuffisantes ?).", "erreur");
     } finally {
       setTraitement(false);
     }
@@ -101,7 +105,7 @@ export default function ImmobilisationsPage() {
       toast("Équipement supprimé.", "succes");
     } catch (error) {
       console.error("Erreur suppression:", error);
-      toast("Erreur lors de la suppression.", "erreur");
+      toast("Erreur lors de la suppression (permissions insuffisantes ?).", "erreur");
     }
   };
 
@@ -153,7 +157,7 @@ export default function ImmobilisationsPage() {
 
   return (
     <div className="p-8">
-      {/* En-tête — sans bouton retour (NAV-04), avec exports (TRA-01) */}
+      {/* En-tête */}
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Liste des Immobilisations</h1>
@@ -174,12 +178,14 @@ export default function ImmobilisationsPage() {
             ]}
             nomFeuille="Immobilisations"
           />
-          <Link
-            href="/immobilisations/ajouter"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            ➕ Ajouter
-          </Link>
+          {peutEcrire && (
+            <Link
+              href="/immobilisations/ajouter"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              ➕ Ajouter
+            </Link>
+          )}
         </div>
       </div>
 
@@ -280,7 +286,9 @@ export default function ImmobilisationsPage() {
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Montant</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Service</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Personnel</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                {peutEcrire && (
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -323,37 +331,39 @@ export default function ImmobilisationsPage() {
                   <td className="py-3 px-4 text-sm font-semibold text-gray-900">{formatMontant(immo.montant)}</td>
                   <td className="py-3 px-4 text-sm text-gray-600">{getServiceNom(immo.service_id)}</td>
                   <td className="py-3 px-4 text-sm text-gray-600">{getPersonnelNom(immo.personnel_id)}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setImmoEnEdition(immo)}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-sm font-medium"
-                        title="Modifier"
-                      >
-                        ✏️ Modifier
-                      </button>
-                      {immo.statut !== 'sorti' && (
+                  {peutEcrire && (
+                    <td className="py-3 px-4">
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => ouvrirModaleSortie(immo.id, immo.code_interne)}
-                          className="px-3 py-1 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition text-sm font-medium"
+                          onClick={() => setImmoEnEdition(immo)}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition text-sm font-medium"
+                          title="Modifier"
                         >
-                          📦 Sortir
+                          ✏️ Modifier
                         </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(immo.id, immo.code_interne, immo.created_at)}
-                        className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
-                        title="Supprimer (erreur de saisie < 24 h)"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
+                        {immo.statut !== 'sorti' && (
+                          <button
+                            onClick={() => ouvrirModaleSortie(immo.id, immo.code_interne)}
+                            className="px-3 py-1 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition text-sm font-medium"
+                          >
+                            📦 Sortir
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(immo.id, immo.code_interne, immo.created_at)}
+                          className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"
+                          title="Supprimer (erreur de saisie < 24 h)"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
               {immobilisationsTriees.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-gray-500">Aucun équipement trouvé</td>
+                  <td colSpan={peutEcrire ? 9 : 8} className="py-8 text-center text-gray-500">Aucun équipement trouvé</td>
                 </tr>
               )}
             </tbody>

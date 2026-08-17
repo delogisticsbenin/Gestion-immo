@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Repeat, Search } from "lucide-react";
+import { Repeat } from "lucide-react";
 import {
   getImmobilisations,
   getServices,
@@ -12,6 +12,7 @@ import {
 import { getCurrentUser } from "@/app/lib/supabaseClient";
 import BoutonsExport from "@/app/components/BoutonsExport";
 import { ColonneExport } from "@/app/lib/export";
+import { usePeutEcrire } from "@/app/lib/roles";
 
 export default function ReaffectationsPage() {
   const [immobilisations, setImmobilisations] = useState<any[]>([]);
@@ -22,6 +23,9 @@ export default function ReaffectationsPage() {
   const [filtreService, setFiltreService] = useState("");
   const [chargement, setChargement] = useState(true);
   const [succes, setSucces] = useState("");
+
+  // ✅ PAR-06 : lecteur = lecture seule
+  const peutEcrire = usePeutEcrire();
 
   // Modale
   const [modale, setModale] = useState<any | null>(null);
@@ -105,7 +109,7 @@ export default function ReaffectationsPage() {
       setSucces(`Réaffectation de ${modale.code_interne} enregistrée.`);
       setTimeout(() => setSucces(""), 4000);
     } catch (e) {
-      setErreur("Erreur lors de la réaffectation. Vérifiez la connexion et réessayez.");
+      setErreur("Erreur lors de la réaffectation (permissions insuffisantes ou connexion).");
     } finally {
       setTraitement(false);
     }
@@ -161,7 +165,7 @@ export default function ReaffectationsPage() {
 
       {/* Liste des équipements à réaffecter */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Recherche</label>
             <input
@@ -193,7 +197,9 @@ export default function ReaffectationsPage() {
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Équipement</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Service actuel</th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Détenteur actuel</th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Action</th>
+                {peutEcrire && (
+                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase">Action</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -203,18 +209,20 @@ export default function ReaffectationsPage() {
                   <td className="py-3 px-4 font-medium text-gray-900">{immo.nom}</td>
                   <td className="py-3 px-4 text-gray-600">{serviceNom(immo.service_id)}</td>
                   <td className="py-3 px-4 text-gray-600">{personnelNom(immo.personnel_id)}</td>
-                  <td className="py-3 px-4">
-                    <button
-                      onClick={() => ouvrirModale(immo)}
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium"
-                    >
-                      🔄 Réaffecter
-                    </button>
-                  </td>
+                  {peutEcrire && (
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => ouvrirModale(immo)}
+                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-sm font-medium"
+                      >
+                        🔄 Réaffecter
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
               {biensFiltres.length === 0 && (
-                <tr><td colSpan={5} className="py-8 text-center text-gray-500">Aucun équipement à réaffecter.</td></tr>
+                <tr><td colSpan={peutEcrire ? 5 : 4} className="py-8 text-center text-gray-500">Aucun équipement à réaffecter.</td></tr>
               )}
             </tbody>
           </table>
