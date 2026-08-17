@@ -13,6 +13,7 @@ import {
   LogOut,
   Building2,
   Download,
+  History as HistoryIcon,
 } from "lucide-react";
 import { signOut } from "@/app/lib/supabaseClient";
 import { getEntrepriseData } from "@/app/lib/store";
@@ -20,6 +21,7 @@ import { getEntrepriseData } from "@/app/lib/store";
 const LIENS = [
   { href: "/exports", label: "Exports", icon: Download },
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+  { href: "/journal", label: "Journal d'audit", icon: HistoryIcon },
   { href: "/immobilisations", label: "Immobilisations", icon: Boxes },
   { href: "/reaffectations", label: "Réaffectations", icon: Repeat },
   { href: "/scan", label: "Scanner QR", icon: QrCode },
